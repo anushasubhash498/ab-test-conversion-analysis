@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A/B Test Conversion Optimization Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-gradient: linear-gradient(135deg, #0b0f19 0%, #1e1b4b 100%);
+            --card-bg: rgba(15, 23, 42, 0.75);
+            --card-border: rgba(255, 255, 255, 0.05);
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --accent-emerald: #10b981;
+            --accent-violet: #8b5cf6;
+            --accent-amber: #f59e0b;
+            --accent-rose: #f43f5e;
+            --font-main: 'Inter', sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: var(--font-main);
+            background: var(--bg-gradient);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2.5rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            padding-bottom: 1.5rem;
+        }
+
+        .header-title h1 {
+            font-size: 2.25rem;
+            font-weight: 700;
+            background: linear-gradient(to right, #34d399, #a78bfa, #f472b6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+        }
+
+        .header-title p {
+            color: var(--text-secondary);
+            font-size: 1.05rem;
+        }
+
+        .badge {
+            background: rgba(16, 185, 129, 0.15);
+            border: 1px solid var(--accent-emerald);
+            color: #a7f3d0;
+            padding: 0.45rem 1.1rem;
+            border-radius: 9999px;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        /* KPI Grid */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2.5rem;
+        }
+
+        .kpi-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            backdrop-filter: blur(20px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            transition: transform 0.3s ease, border-color 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .kpi-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: var(--accent-violet);
+        }
+
+        .kpi-card.emerald::before { background: var(--accent-emerald); }
+        .kpi-card.amber::before { background: var(--accent-amber); }
+        .kpi-card.rose::before { background: var(--accent-rose); }
+
+        .kpi-card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(255, 255, 255, 0.12);
+        }
+
+        .kpi-title {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-secondary);
+            margin-bottom: 0.75rem;
+            font-weight: 600;
+        }
+
+        .kpi-value {
+            font-size: 2.25rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            letter-spacing: -0.02em;
+        }
+
+        .kpi-desc {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        /* Charts Grid */
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            gap: 1.5rem;
+            margin-bottom: 2.5rem;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            backdrop-filter: blur(20px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .col-8 { grid-column: span 8; }
+        .col-4 { grid-column: span 4; }
+        .col-6 { grid-column: span 6; }
+        .col-12 { grid-column: span 12; }
+
+        @media (max-width: 1024px) {
+            .col-8, .col-4, .col-6 {
+                grid-column: span 12;
+            }
+        }
+
+        .card-header {
+            margin-bottom: 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .card-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 320px;
+            width: 100%;
+        }
+
+        /* Statistical Table */
+        .table-container {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+
+        th {
+            padding: 0.75rem 1rem;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        td {
+            padding: 1rem;
+            font-size: 0.925rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+        }
+
+        tr:hover td {
+            background: rgba(255, 255, 255, 0.01);
+        }
+
+        .highlight-text {
+            color: var(--accent-emerald);
+            font-weight: 600;
+        }
+
+        footer {
+            text-align: center;
+            padding: 2.5rem 0;
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            margin-top: 2rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-title">
+                <h1>A/B Test Experiment Dashboard</h1>
+                <p>Conversion Rate Optimization (CRO) Analysis & Significance testing</p>
+            </div>
+            <div>
+                <span class="badge">Significant Result: p = 0.0055</span>
+            </div>
+        </header>
+
+        <!-- KPI Grid -->
+        <div class="kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-title">Total Users Enrolled</div>
+                <div class="kpi-value" id="kpi-users">0</div>
+                <div class="kpi-desc">50/50 split experiment cohort</div>
+            </div>
+            <div class="kpi-card emerald">
+                <div class="kpi-title">Control Conversion Rate</div>
+                <div class="kpi-value" id="kpi-control-cr">0.00%</div>
+                <div class="kpi-desc">Old landing page design (baseline)</div>
+            </div>
+            <div class="kpi-card emerald">
+                <div class="kpi-title">Treatment Conversion Rate</div>
+                <div class="kpi-value" id="kpi-treatment-cr">0.00%</div>
+                <div class="kpi-desc">New optimized landing page</div>
+            </div>
+            <div class="kpi-card amber">
+                <div class="kpi-title">Conversion Lift (Relative)</div>
+                <div class="kpi-value" id="kpi-lift">0.0%</div>
+                <div class="kpi-desc">Relative improvement of treatment</div>
+            </div>
+        </div>
+
+        <!-- Charts Row 1 -->
+        <div class="charts-grid">
+            <div class="card col-8">
+                <div class="card-header">
+                    <div class="card-title">Cumulative Conversion Rate Stabilization (Time Series)</div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="cumulativeCrChart"></canvas>
+                </div>
+            </div>
+            <div class="card col-4">
+                <div class="card-header">
+                    <div class="card-title">CR Comparison (with 95% Error Margin)</div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="crComparisonChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Row 2 -->
+        <div class="charts-grid">
+            <div class="card col-6">
+                <div class="card-header">
+                    <div class="card-title">Conversion Rates by Device Segmentation</div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="deviceChart"></canvas>
+                </div>
+            </div>
+            <div class="card col-6">
+                <div class="card-header">
+                    <div class="card-title">Experiment Statistical Parameters</div>
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Statistical Metric</th>
+                                <th>Value</th>
+                                <th>Threshold / Interpretation</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>P-Value</strong></td>
+                                <td class="highlight-text">0.00547</td>
+                                <td>&lt; 0.05 (Highly Significant)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Z-Score (Proportions)</strong></td>
+                                <td>2.777</td>
+                                <td>&gt; 1.96 (Confidence Limit Exceeded)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>95% Confidence Interval for Diff</strong></td>
+                                <td>[+0.52%, +2.98%]</td>
+                                <td>Excludes 0 (Statistically Sound Lift)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Statistical Power</strong></td>
+                                <td>82.4%</td>
+                                <td>&gt; 80.0% standard benchmark</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Experiment Duration</strong></td>
+                                <td>30 Days</td>
+                                <td>Sufficient cycle to avoid weekly bias</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <p>Designed and Built by <strong>Anusha Subhash</strong> | Candidate for Data / Business Analyst roles in Berlin</p>
+            <p style="margin-top: 0.5rem; font-size: 0.75rem;">Product Growth & Experimentation Case Study (Python Stats Engine + Chart.js Dashboard)</p>
+        </footer>
+    </div>
+
+    <script>
+        // Animate counter values
+        function animateCounter(id, target, prefix = '', suffix = '', decimals = 0) {
+            const el = document.getElementById(id);
+            let start = 0;
+            const duration = 1500;
+            const stepTime = 15;
+            const steps = duration / stepTime;
+            const valPerStep = target / steps;
+
+            const timer = setInterval(() => {
+                start += valPerStep;
+                if (start >= target) {
+                    clearInterval(timer);
+                    start = target;
+                }
+                el.innerText = prefix + start.toLocaleString(undefined, {minimumFractionDigits: decimals, maximumFractionDigits: decimals}) + suffix;
+            }, stepTime);
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            animateCounter('kpi-users', 10000);
+            animateCounter('kpi-control-cr', 12.02, '', '%', 2);
+            animateCounter('kpi-treatment-cr', 13.91, '', '%', 2);
+            animateCounter('kpi-lift', 15.72, '+', '%', 1);
+
+            // Chart 1: Cumulative Conversion Rate
+            const days = Array.from({length: 30}, (_, i) => 'Day ' + (i + 1));
+            const cumControlCr = [14.1, 13.5, 12.8, 12.5, 12.3, 12.2, 12.1, 12.0, 11.9, 12.1, 12.2, 12.0, 12.1, 11.9, 12.0, 12.1, 12.2, 12.1, 12.0, 12.1, 12.0, 12.1, 12.0, 11.9, 12.1, 12.0, 12.0, 12.1, 12.0, 12.02];
+            const cumTreatmentCr = [15.2, 14.8, 14.2, 14.4, 14.1, 13.9, 13.7, 13.9, 13.8, 13.9, 14.0, 13.8, 13.9, 14.0, 13.8, 13.9, 14.1, 14.0, 13.9, 14.0, 13.9, 14.0, 13.8, 13.9, 14.1, 14.0, 13.9, 14.0, 13.9, 13.91];
+
+            new Chart(document.getElementById('cumulativeCrChart'), {
+                type: 'line',
+                data: {
+                    labels: days,
+                    datasets: [
+                        {
+                            label: 'Treatment Group (New Page)',
+                            data: cumTreatmentCr,
+                            borderColor: '#8b5cf6',
+                            backgroundColor: 'transparent',
+                            borderWidth: 3,
+                            tension: 0.1
+                        },
+                        {
+                            label: 'Control Group (Old Page)',
+                            data: cumControlCr,
+                            borderColor: '#10b981',
+                            backgroundColor: 'transparent',
+                            borderWidth: 2,
+                            tension: 0.1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { labels: { color: '#94a3b8' } }
+                    },
+                    scales: {
+                        y: {
+                            grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                            ticks: { color: '#94a3b8', callback: val => val + '%' }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: '#94a3b8', maxTicksLimit: 10 }
+                        }
+                    }
+                }
+            });
+
+            // Chart 2: Conversion Rate with error margin
+            new Chart(document.getElementById('crComparisonChart'), {
+                type: 'bar',
+                data: {
+                    labels: ['Control', 'Treatment'],
+                    datasets: [{
+                        label: 'Conversion Rate (%)',
+                        data: [12.02, 13.91],
+                        backgroundColor: ['rgba(16, 185, 129, 0.7)', 'rgba(139, 92, 246, 0.7)'],
+                        borderColor: ['#10b981', '#8b5cf6'],
+                        borderWidth: 2,
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: {
+                            grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                            ticks: { color: '#94a3b8', callback: val => val + '%' }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: '#94a3b8' }
+                        }
+                    }
+                }
+            });
+
+            // Chart 3: Device Segmentation
+            new Chart(document.getElementById('deviceChart'), {
+                type: 'bar',
+                data: {
+                    labels: ['Desktop', 'Mobile', 'Tablet'],
+                    datasets: [
+                        {
+                            label: 'Control (Old)',
+                            data: [12.4, 11.5, 11.9],
+                            backgroundColor: 'rgba(16, 185, 129, 0.65)'
+                        },
+                        {
+                            label: 'Treatment (New)',
+                            data: [14.5, 13.2, 13.8],
+                            backgroundColor: 'rgba(139, 92, 246, 0.85)'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { labels: { color: '#94a3b8' } }
+                    },
+                    scales: {
+                        y: {
+                            grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                            ticks: { color: '#94a3b8', callback: val => val + '%' }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: '#94a3b8' }
+                        }
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>
